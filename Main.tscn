@@ -1,0 +1,88 @@
+[gd_scene load_steps=6 format=2]
+
+[ext_resource path="res://addons/obs_radial_menu/nodes/OBSRadialMenu/OBSRadialMenu.gd" type="Script" id=1]
+[ext_resource path="res://addons/obs_radial_menu/nodes/OBSRadialButton/OBSRadialButton.gd" type="Script" id=2]
+[ext_resource path="res://Main.gd" type="Script" id=3]
+[ext_resource path="res://UI/OptionControls/OptionControls.tscn" type="PackedScene" id=4]
+[ext_resource path="res://OBSRadialButton.theme" type="Theme" id=5]
+
+[node name="Main" type="Node2D"]
+script = ExtResource( 3 )
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="OptionControls" parent="CanvasLayer" instance=ExtResource( 4 )]
+
+[node name="OBSRadialMenu" type="Popup" parent="CanvasLayer"]
+visible = true
+anchor_right = 1.0
+anchor_bottom = 1.0
+focus_mode = 2
+script = ExtResource( 1 )
+max_arc_degrees = 360.0
+outer_radius = 0.333333
+outer_radius_pixels = 100.0
+inner_radius = 0.6
+inner_radius_pixels = 60.0
+offset_angle = 0.0
+gap_degrees = 10.0
+force_neighboring = true
+
+[node name="OBSRadialButton" type="Control" parent="CanvasLayer/OBSRadialMenu"]
+margin_left = -100.0
+margin_top = -100.0
+margin_right = 100.0
+margin_bottom = 100.0
+mouse_filter = 1
+theme = ExtResource( 5 )
+script = ExtResource( 2 )
+icon = null
+arc_start_degree = 5.0
+arc_end_degree = 85.0
+arc_offset_degree = 0.0
+inner_radius = 0.6
+pressed = false
+
+[node name="OBSRadialButton2" type="Control" parent="CanvasLayer/OBSRadialMenu"]
+margin_left = -100.0
+margin_top = -100.0
+margin_right = 100.0
+margin_bottom = 100.0
+mouse_filter = 1
+script = ExtResource( 2 )
+icon = null
+arc_start_degree = 95.0
+arc_end_degree = 175.0
+arc_offset_degree = 0.0
+inner_radius = 0.6
+pressed = false
+
+[node name="OBSRadialButton3" type="Control" parent="CanvasLayer/OBSRadialMenu"]
+margin_left = -100.0
+margin_top = -100.0
+margin_right = 100.0
+margin_bottom = 100.0
+mouse_filter = 1
+script = ExtResource( 2 )
+icon = null
+arc_start_degree = 185.0
+arc_end_degree = 265.0
+arc_offset_degree = 0.0
+inner_radius = 0.6
+pressed = false
+
+[node name="OBSRadialButton4" type="Control" parent="CanvasLayer/OBSRadialMenu"]
+margin_left = -100.0
+margin_top = -100.0
+margin_right = 100.0
+margin_bottom = 100.0
+mouse_filter = 1
+script = ExtResource( 2 )
+icon = null
+arc_start_degree = 275.0
+arc_end_degree = 355.0
+arc_offset_degree = 0.0
+inner_radius = 0.6
+pressed = false
+
+[connection signal="centering_changed" from="CanvasLayer/OptionControls" to="." method="_on_OptionControls_centering_changed"]
