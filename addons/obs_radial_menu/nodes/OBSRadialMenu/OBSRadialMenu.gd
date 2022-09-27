@@ -76,24 +76,26 @@ func set_gap_degrees(g : float) -> void:
 # ------------------------------------------------------------------------------
 func _ready() -> void:
 	set_focus_mode(Control.FOCUS_ALL)
+	anchor_left = 0.0
+	anchor_top = 0.0
+	anchor_bottom = 1.0
+	anchor_right = 1.0
 	var _res : int = 0
 	if not Engine.editor_hint:
 		_res = get_viewport().connect("size_changed", self, "_on_viewport_size_changed")
+	else:
+		# This is to keep the popup filling the viewport as I want it to and prevents the editor
+		# from defying me... damnit! Shouldn't be needed at runtime.
+		_res = connect("item_rect_changed", self, "_on_item_rect_changed")
 	_res = connect("child_entered_tree", self, "_on_child_entered")
 	_res = connect("child_exiting_tree", self, "_on_child_exited")
 	_res = connect("about_to_show", self, "_on_about_to_show")
-	
 	_relative_coords = Vector2(0.5, 0.5)
 	_RecalcScreenSize()
 	_AdjustRadialButtons()
-#	if not Engine.editor_hint:
-#		_RecalcScreenSize()
-#	else:
-#		_relative_coords = Vector2(0.5, 0.5)
-#	_AdjustRadialButtons()
-#	_AdjustRadialButtonSizeAndPos()
 
 func _enter_tree() -> void:
+	_RecalcScreenSize()
 	var parent = get_parent()
 	if parent.get_class() == CLASS_NAME:
 		_is_subradial = true
@@ -489,6 +491,10 @@ func _on_viewport_size_changed() -> void:
 	if not Engine.editor_hint:
 		_RecalcScreenSize()
 
+func _on_item_rect_changed() -> void:
+	# This exists because the Editor keeps trying to do something with my size and it's... upsetting
+	_RecalcScreenSize()
+
 func _on_child_entered(child : Node) -> void:
 	if child is OBSRadialButton:
 		if not Engine.editor_hint:
@@ -516,3 +522,4 @@ func _on_about_to_show() -> void:
 				child.grab_focus()
 				grab_focus()
 				break
+
