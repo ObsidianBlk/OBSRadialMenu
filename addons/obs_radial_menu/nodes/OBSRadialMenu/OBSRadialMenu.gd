@@ -39,7 +39,7 @@ func set_outer_radius(r : float) -> void:
 		_outer_radius = r
 		if _is_subradial:
 			_inner_radius = _ClampInnerRadii(_inner_radius)
-			_NotifySubmenuRadialUpdate()
+		_NotifySubmenuRadialUpdate()
 		_AdjustRadialButtonSizeAndPos()
 
 func set_outer_radius_pixels(r : float) -> void:
@@ -70,6 +70,11 @@ func set_gap_degrees(g : float) -> void:
 	if g >= 0.0 and g <= 10.0 and _gap_degrees != g:
 		_gap_degrees = g
 		_AdjustRadialButtons()
+
+func set_clamp_to_parent(c : bool) -> void:
+	_clamp_to_parent = c
+	if _is_subradial and _clamp_to_parent:
+		_AdjustToParent()
 
 # ------------------------------------------------------------------------------
 # Override Methods
@@ -181,7 +186,7 @@ func _set(property : String, value) -> bool:
 			else : success = false
 		"clamp_to_parent":
 			if typeof(value) == TYPE_BOOL:
-				_clamp_to_parent = value
+				set_clamp_to_parent(value)
 			else : success = false
 		"expand_with_parent":
 			if typeof(value) == TYPE_BOOL:
