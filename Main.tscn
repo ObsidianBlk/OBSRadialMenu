@@ -100,13 +100,15 @@ offset_angle = 0.0
 gap_degrees = 10.0
 force_neighboring = true
 clamp_to_parent = true
+clamp_type = 3
+sticky_thickness = 64.0
 expand_with_parent = true
 
 [node name="OBSRadialButton" type="Control" parent="CanvasLayer/OBSRadialMenu/OBSRadialMenu"]
-margin_left = 270.5
-margin_top = 58.5
-margin_right = 753.5
-margin_bottom = 541.5
+margin_left = -241.5
+margin_top = -241.5
+margin_right = 241.5
+margin_bottom = 241.5
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null
@@ -117,10 +119,10 @@ inner_radius = 0.655901
 pressed = false
 
 [node name="OBSRadialButton2" type="Control" parent="CanvasLayer/OBSRadialMenu/OBSRadialMenu"]
-margin_left = 270.5
-margin_top = 58.5
-margin_right = 753.5
-margin_bottom = 541.5
+margin_left = -241.5
+margin_top = -241.5
+margin_right = 241.5
+margin_bottom = 241.5
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null

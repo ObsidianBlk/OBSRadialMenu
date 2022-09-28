@@ -8,6 +8,8 @@ class_name OBSRadialMenu, "res://addons/obs_radial_menu/assets/icons/icon_obsrad
 const CLASS_NAME : String = "OBSRadialMenu"
 const PROP_CHANGE_NOTE_DEBOUNCE : float = 0.5
 
+enum CLAMP {NoClamp=0, ExpandOnly=1, Sticky=2, FixedSticky=3}
+
 # ------------------------------------------------------------------------------
 # "Export" Variables
 # ------------------------------------------------------------------------------
@@ -17,8 +19,10 @@ var _inner_radius : float = 0.25
 var _offset_angle : float = 0.0
 var _gap_degrees : float = 0.2
 var _force_neighboring : bool = true
-var _clamp_to_parent : bool = true
-var _expand_with_parent : bool = true
+#var _clamp_to_parent : bool = true
+
+var _clamp_type : int = CLAMP.NoClamp
+var _sticky_thickness : float = 64.0
 
 # ------------------------------------------------------------------------------
 # Variables
@@ -71,10 +75,17 @@ func set_gap_degrees(g : float) -> void:
 		_gap_degrees = g
 		_AdjustRadialButtons()
 
-func set_clamp_to_parent(c : bool) -> void:
-	_clamp_to_parent = c
-	if _is_subradial and _clamp_to_parent:
-		_AdjustToParent()
+func set_clamp_type(c : int) -> void:
+	if CLAMP.values().find(c) >= 0:
+		_clamp_type = c
+		if _is_subradial and _clamp_type != CLAMP.NoClamp:
+			_AdjustToParent()
+
+func set_sticky_thickness(t : float) -> void:
+	if t >= 0.0:
+		_sticky_thickness = t
+		if _is_subradial:
+			_AdjustToParent()
 
 # ------------------------------------------------------------------------------
 # Override Methods
@@ -136,10 +147,10 @@ func _get(property : String):
 			return _gap_degrees
 		"force_neighboring":
 			return _force_neighboring
-		"clamp_to_parent":
-			return _clamp_to_parent
-		"expand_with_parent":
-			return _expand_with_parent
+		"clamp_type":
+			return _clamp_type
+		"sticky_thickness":
+			return _sticky_thickness
 	return null
 
 func _set(property : String, value) -> bool:
@@ -184,13 +195,13 @@ func _set(property : String, value) -> bool:
 			if typeof(value) == TYPE_BOOL:
 				_force_neighboring = value
 			else : success = false
-		"clamp_to_parent":
-			if typeof(value) == TYPE_BOOL:
-				set_clamp_to_parent(value)
+		"clamp_type":
+			if typeof(value) == TYPE_INT:
+				set_clamp_type(value)
 			else : success = false
-		"expand_with_parent":
-			if typeof(value) == TYPE_BOOL:
-				_expand_with_parent = value
+		"sticky_thickness":
+			if typeof(value) == TYPE_REAL:
+				set_sticky_thickness(value)
 			else : success = false
 		"theme":
 			call_deferred("_NotifyButtonsThemeChanged")
@@ -266,14 +277,16 @@ func _get_property_list() -> Array:
 	
 	if _is_subradial:
 		arr.append({
-			name = "clamp_to_parent",
-			type = TYPE_BOOL,
+			name = "clamp_type",
+			type = TYPE_INT,
+			hint = PROPERTY_HINT_ENUM,
+			hint_string=_GetCLAMPEnumString(),
 			usage = PROPERTY_USAGE_DEFAULT
 		})
-		if _clamp_to_parent:
+		if _clamp_type == CLAMP.FixedSticky:
 			arr.append({
-				name = "expand_with_parent",
-				type = TYPE_BOOL,
+				name = "sticky_thickness",
+				type = TYPE_REAL,
 				usage = PROPERTY_USAGE_DEFAULT
 			})
 	
@@ -282,6 +295,16 @@ func _get_property_list() -> Array:
 # ------------------------------------------------------------------------------
 # Private Methods
 # ------------------------------------------------------------------------------
+func _GetCLAMPEnumString() -> String:
+	var s : String = ""
+	for key in CLAMP.keys():
+		if s == "":
+			s = "%s:%s"%[key, CLAMP[key]]
+		else:
+			s = "%s,%s:%s"%[s, key, CLAMP[key]]
+	return s
+
+
 func _PropertyChangedNotify() -> void:
 	if not is_inside_tree() or not Engine.editor_hint:
 		return # Don't bother doing anything if we're not in the tree or in the Godot Editor
@@ -295,7 +318,7 @@ func _PropertyChangedNotify() -> void:
 func _NotifySubmenuRadialUpdate() -> void:
 	for child in get_children():
 		if child.get_class() == CLASS_NAME:
-			if child.expand_with_parent:
+			if child.clamp_type != CLAMP.NoClamp:
 				child._AdjustToParent()
 
 func _NotifyButtonsThemeChanged() -> void:
@@ -324,7 +347,7 @@ func _CalcInnerRadiusPixels() -> float:
 
 func _ClampOuterRadii(value : float) -> float:
 	value = max(0.0, min(1.0, value))
-	if _is_subradial and _clamp_to_parent:
+	if _is_subradial and _clamp_type != CLAMP.NoClamp:
 		var parent = get_parent()
 		if parent.get_class() == CLASS_NAME:
 			var base_size : float = _GetBaseSize()
@@ -332,24 +355,26 @@ func _ClampOuterRadii(value : float) -> float:
 			var radius : float = base_size * value
 			if radius < parent_outer_pixels:
 				value = max(0.0, min(1.0, parent_outer_pixels / base_size))
+			if _clamp_type == CLAMP.FixedSticky and radius < parent_outer_pixels + _sticky_thickness:
+				value = max(0.0, min(1.0, (parent_outer_pixels + _sticky_thickness) / base_size))
 	return value
 
 func _ClampInnerRadii(value : float) -> float:
 	value = max(0.0, min(1.0, value))
-	if _is_subradial and _clamp_to_parent:
+	if _is_subradial and _clamp_type != CLAMP.NoClamp:
 		var parent = get_parent()
 		if parent.get_class() == CLASS_NAME:
 			var parent_outer_pixels = parent._CalcOuterRadiusPixels()
 			var outer_pixels = _CalcOuterRadiusPixels()
 			var inner_pixels  = outer_pixels * value
-			if inner_pixels < parent_outer_pixels:
+			if inner_pixels < parent_outer_pixels or _clamp_type == CLAMP.Sticky:
 				inner_pixels = parent_outer_pixels
 				return inner_pixels / outer_pixels
 	return value
 
 func _RecalcScreenSize() -> void:
 	rect_size = get_viewport_rect().size
-	if _is_subradial and _clamp_to_parent:
+	if _is_subradial and _clamp_type != CLAMP.NoClamp:
 		_AdjustToParent()
 	else:
 		_AdjustRadialButtonSizeAndPos()
@@ -369,10 +394,12 @@ func _AdjustToParent() -> void:
 	if parent.get_class() == CLASS_NAME:
 		var parent_outer_pixels : float = parent.get("outer_radius_pixels")
 		var inner_pixels : float = get("inner_radius_pixels")
-		if inner_pixels < parent_outer_pixels:
+		if inner_pixels < parent_outer_pixels or _clamp_type == CLAMP.Sticky or _clamp_type == CLAMP.FixedSticky:
 			var base_size : float = _GetBaseSize()
 			var outer_pixels : float = get("outer_radius_pixels")
 			var thickness : float = outer_pixels - inner_pixels
+			if _clamp_type == CLAMP.FixedSticky:
+				thickness = _sticky_thickness
 			inner_pixels = parent_outer_pixels
 			outer_pixels = inner_pixels + thickness
 			if outer_pixels > base_size:
