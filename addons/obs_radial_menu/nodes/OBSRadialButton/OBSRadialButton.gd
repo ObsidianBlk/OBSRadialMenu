@@ -178,7 +178,7 @@ func _set(property : String, value) -> bool:
 	
 	match property:
 		"icon":
-			if value is Texture:
+			if value is Texture or value == null:
 				set_icon(value)
 			else : success = false
 		"arc_start_degree":
