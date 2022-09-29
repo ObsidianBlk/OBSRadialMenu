@@ -17,12 +17,13 @@ var _max_arc_degrees : float = 360.0
 var _outer_radius : float = 1.0
 var _inner_radius : float = 0.25
 var _offset_angle : float = 0.0
-var _gap_degrees : float = 0.2
+var _gap_degrees : float = 5.0
 var _force_neighboring : bool = true
 #var _clamp_to_parent : bool = true
 
 var _clamp_type : int = CLAMP.NoClamp
-var _sticky_thickness : float = 64.0
+var _radial_width : float = 0.0
+var _radial_gap : float = 0.0
 
 # ------------------------------------------------------------------------------
 # Variables
@@ -81,11 +82,18 @@ func set_clamp_type(c : int) -> void:
 		if _is_subradial and _clamp_type != CLAMP.NoClamp:
 			_AdjustToParent()
 
-func set_sticky_thickness(t : float) -> void:
+func set_radial_width(t : float) -> void:
 	if t >= 0.0:
-		_sticky_thickness = t
-		if _is_subradial:
+		_radial_width = t
+		if _is_subradial and _clamp_type != CLAMP.NoClamp:
 			_AdjustToParent()
+
+func set_radial_gap(g : float) -> void:
+	if g >= 0.0:
+		_radial_gap = g
+		if _is_subradial and _clamp_type != CLAMP.NoClamp:
+			_AdjustToParent()
+
 
 # ------------------------------------------------------------------------------
 # Override Methods
@@ -117,17 +125,28 @@ func _enter_tree() -> void:
 		_is_subradial = true
 
 func _gui_input(event : InputEvent) -> void:
+	var processed : bool = false
 	if event.is_action_pressed("ui_cancel"):
 		hide()
+		processed = true
 	else:
-		var processed : bool = false
 		for child in get_children():
 			if child is OBSRadialButton:
 				if not processed:
 					processed = child._ProcessGUIInput(event)
 				else:
 					child._ProcessGUIInput(event, true)
-	accept_event()
+	if mouse_filter == MOUSE_FILTER_STOP:
+		accept_event()
+	elif mouse_filter == MOUSE_FILTER_PASS:
+		if processed:
+			accept_event()
+		else:
+			var parent = get_parent()
+			if parent:
+				if parent.get_class() == CLASS_NAME:
+					parent._gui_input(event)
+	
 
 func _get(property : String):
 	match property:
@@ -149,8 +168,10 @@ func _get(property : String):
 			return _force_neighboring
 		"clamp_type":
 			return _clamp_type
-		"sticky_thickness":
-			return _sticky_thickness
+		"radial_width":
+			return _radial_width
+		"radial_gap":
+			return _radial_gap
 	return null
 
 func _set(property : String, value) -> bool:
@@ -199,9 +220,13 @@ func _set(property : String, value) -> bool:
 			if typeof(value) == TYPE_INT:
 				set_clamp_type(value)
 			else : success = false
-		"sticky_thickness":
+		"radial_width":
 			if typeof(value) == TYPE_REAL:
-				set_sticky_thickness(value)
+				set_radial_width(value)
+			else : success = false
+		"radial_gap":
+			if typeof(value) == TYPE_REAL:
+				set_radial_gap(value)
 			else : success = false
 		"theme":
 			call_deferred("_NotifyButtonsThemeChanged")
@@ -229,31 +254,63 @@ func _get_property_list() -> Array:
 			hint = PROPERTY_HINT_RANGE,
 			hint_string = "0.0, 360.0",
 			usage = PROPERTY_USAGE_DEFAULT
-		},
-		{
-			name = "outer_radius",
-			type = TYPE_REAL,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
+		}
+	]
+	if _is_subradial:
+		arr.append({
+			name = "clamp_type",
+			type = TYPE_INT,
+			hint = PROPERTY_HINT_ENUM,
+			hint_string=_GetCLAMPEnumString(),
 			usage = PROPERTY_USAGE_DEFAULT
-		},
-		{
-			name = "outer_radius_pixels",
-			type = TYPE_REAL,
-			usage = PROPERTY_USAGE_DEFAULT
-		},
-		{
-			name = "inner_radius",
-			type = TYPE_REAL,
-			hint = PROPERTY_HINT_RANGE,
-			hint_string = "0.0, 1.0",
-			usage = PROPERTY_USAGE_DEFAULT
-		},
-		{
-			name = "inner_radius_pixels",
-			type = TYPE_REAL,
-			usage = PROPERTY_USAGE_DEFAULT
-		},
+		})
+	
+	if not _is_subradial or _clamp_type != CLAMP.FixedSticky:
+		arr.append_array([
+			{
+				name = "outer_radius",
+				type = TYPE_REAL,
+				hint = PROPERTY_HINT_RANGE,
+				hint_string = "0.0, 1.0",
+				usage = PROPERTY_USAGE_DEFAULT
+			},
+			{
+				name = "outer_radius_pixels",
+				type = TYPE_REAL,
+				usage = PROPERTY_USAGE_DEFAULT
+			},
+		])
+	elif _is_subradial:
+		arr.append_array([
+			{
+				name = "radial_width",
+				type = TYPE_REAL,
+				usage = PROPERTY_USAGE_DEFAULT
+			},
+			{
+				name = "radial_gap",
+				type = TYPE_REAL,
+				usage = PROPERTY_USAGE_DEFAULT
+			}
+		])
+	
+	if not _is_subradial or (_clamp_type != CLAMP.FixedSticky and _clamp_type != CLAMP.Sticky):
+		arr.append_array([
+			{
+				name = "inner_radius",
+				type = TYPE_REAL,
+				hint = PROPERTY_HINT_RANGE,
+				hint_string = "0.0, 1.0",
+				usage = PROPERTY_USAGE_DEFAULT
+			},
+			{
+				name = "inner_radius_pixels",
+				type = TYPE_REAL,
+				usage = PROPERTY_USAGE_DEFAULT
+			},
+		])
+		
+	arr.append_array([
 		{
 			name = "offset_angle",
 			type = TYPE_REAL,
@@ -273,22 +330,22 @@ func _get_property_list() -> Array:
 			type = TYPE_BOOL,
 			usage = PROPERTY_USAGE_DEFAULT
 		}
-	]
+	])
 	
-	if _is_subradial:
-		arr.append({
-			name = "clamp_type",
-			type = TYPE_INT,
-			hint = PROPERTY_HINT_ENUM,
-			hint_string=_GetCLAMPEnumString(),
-			usage = PROPERTY_USAGE_DEFAULT
-		})
-		if _clamp_type == CLAMP.FixedSticky:
-			arr.append({
-				name = "sticky_thickness",
-				type = TYPE_REAL,
-				usage = PROPERTY_USAGE_DEFAULT
-			})
+#	if _is_subradial:
+#		arr.append({
+#			name = "clamp_type",
+#			type = TYPE_INT,
+#			hint = PROPERTY_HINT_ENUM,
+#			hint_string=_GetCLAMPEnumString(),
+#			usage = PROPERTY_USAGE_DEFAULT
+#		})
+#		if _clamp_type == CLAMP.FixedSticky:
+#			arr.append({
+#				name = "sticky_thickness",
+#				type = TYPE_REAL,
+#				usage = PROPERTY_USAGE_DEFAULT
+#			})
 	
 	return arr
 
@@ -355,8 +412,8 @@ func _ClampOuterRadii(value : float) -> float:
 			var radius : float = base_size * value
 			if radius < parent_outer_pixels:
 				value = max(0.0, min(1.0, parent_outer_pixels / base_size))
-			if _clamp_type == CLAMP.FixedSticky and radius < parent_outer_pixels + _sticky_thickness:
-				value = max(0.0, min(1.0, (parent_outer_pixels + _sticky_thickness) / base_size))
+			if _clamp_type == CLAMP.FixedSticky and radius != parent_outer_pixels + _radial_width + _radial_gap:
+				value = max(0.0, min(1.0, (parent_outer_pixels + _radial_width + _radial_gap) / base_size))
 	return value
 
 func _ClampInnerRadii(value : float) -> float:
@@ -367,8 +424,8 @@ func _ClampInnerRadii(value : float) -> float:
 			var parent_outer_pixels = parent._CalcOuterRadiusPixels()
 			var outer_pixels = _CalcOuterRadiusPixels()
 			var inner_pixels  = outer_pixels * value
-			if inner_pixels < parent_outer_pixels or _clamp_type == CLAMP.Sticky:
-				inner_pixels = parent_outer_pixels
+			if inner_pixels < parent_outer_pixels or _clamp_type == CLAMP.Sticky or _clamp_type == CLAMP.FixedSticky:
+				inner_pixels = parent_outer_pixels + _radial_gap
 				return inner_pixels / outer_pixels
 	return value
 
@@ -394,16 +451,31 @@ func _AdjustToParent() -> void:
 	if parent.get_class() == CLASS_NAME:
 		var parent_outer_pixels : float = parent.get("outer_radius_pixels")
 		var inner_pixels : float = get("inner_radius_pixels")
-		if inner_pixels < parent_outer_pixels or _clamp_type == CLAMP.Sticky or _clamp_type == CLAMP.FixedSticky:
-			var base_size : float = _GetBaseSize()
-			var outer_pixels : float = get("outer_radius_pixels")
+		var outer_pixels : float = get("outer_radius_pixels")
+		var base_size : float = _GetBaseSize()
+		
+		var process : bool = false
+		if inner_pixels < parent_outer_pixels and _clamp_type != CLAMP.NoClamp:
 			var thickness : float = outer_pixels - inner_pixels
-			if _clamp_type == CLAMP.FixedSticky:
-				thickness = _sticky_thickness
 			inner_pixels = parent_outer_pixels
+			if _clamp_type == CLAMP.FixedSticky:
+				inner_pixels += _radial_gap
 			outer_pixels = inner_pixels + thickness
+			process = true
+		elif _clamp_type == CLAMP.Sticky or _clamp_type == CLAMP.FixedSticky:
+			var thickness : float = outer_pixels - inner_pixels
+			inner_pixels = parent_outer_pixels
+			if _clamp_type == CLAMP.FixedSticky:
+				inner_pixels += _radial_gap
+				if _radial_width > 0.0:
+					thickness = _radial_width
+				outer_pixels = inner_pixels + thickness
+			process = true
+		
+		if process:
 			if outer_pixels > base_size:
 				outer_pixels = base_size
+			print(outer_pixels)
 			set_outer_radius_pixels(outer_pixels)
 			set_inner_radius_pixels(inner_pixels)
 
@@ -435,7 +507,7 @@ func _AdjustRadialButtons() -> void:
 			_SetNeighbors(last_child, first_child)
 
 func _AdjustRadialButtonSizeAndPos() -> void:
-	var cpos : Vector2 = (rect_size * _relative_coords) #+ Vector2(_outer_radius, _outer_radius)
+	var cpos : Vector2 = rect_size * _relative_coords
 	for child in get_children():
 		if child is OBSRadialButton:
 			var outer : float = _CalcOuterRadiusPixels()
@@ -462,6 +534,9 @@ func _GrabButtonFocus(btn : OBSRadialButton) -> void:
 # ------------------------------------------------------------------------------
 # Public Methods
 # ------------------------------------------------------------------------------
+func get_popup_position() -> Vector2:
+	return _relative_coords * rect_size
+
 func popup(rect : Rect2 = Rect2(0,0,0,0)) -> void:
 	.popup(Rect2(0,0,0,0))
 	if rect_size.x > 0.0 and rect_size.y > 0.0:
@@ -501,9 +576,22 @@ func popup_centered_ratio(ratio : float = 0.75) -> void:
 	# original relative size.
 	popup_centered(Vector2((rect_size.x * 0.5) * ratio, 0.0))
 
+func popup_as_submenu() -> void:
+	# Popup as a submenu positioned where the parent is positioned.
+	# If not a submenu of an OBSRadialMenu, then do nothing.
+	var parent = get_parent()
+	if parent:
+		if parent.get_class() == CLASS_NAME:
+			var pos = parent.get_popup_position()
+			popup(Rect2(pos, Vector2.ZERO))
+
 func hide() -> void:
 	.hide()
 	_radius_override = Vector2.ZERO
+	# Hide all submenus
+	for child in get_children():
+		if child.get_class() == CLASS_NAME:
+			child.hide()
 
 func has_focus() -> bool:
 	return _GetFocusedChild() != null

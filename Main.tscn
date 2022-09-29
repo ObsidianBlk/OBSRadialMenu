@@ -20,19 +20,19 @@ anchor_bottom = 1.0
 focus_mode = 2
 script = ExtResource( 1 )
 max_arc_degrees = 360.0
-outer_radius = 0.528
-outer_radius_pixels = 158.4
+outer_radius = 0.509
+outer_radius_pixels = 152.7
 inner_radius = 0.6
-inner_radius_pixels = 95.04
+inner_radius_pixels = 91.62
 offset_angle = 0.0
 gap_degrees = 10.0
 force_neighboring = true
 
-[node name="OBSRadialButton" type="Control" parent="CanvasLayer/OBSRadialMenu"]
-margin_left = 353.6
-margin_top = 141.6
-margin_right = 670.4
-margin_bottom = 458.4
+[node name="OpenSubmenu" type="Control" parent="CanvasLayer/OBSRadialMenu"]
+margin_left = 359.3
+margin_top = 147.3
+margin_right = 664.7
+margin_bottom = 452.7
 mouse_filter = 1
 theme = ExtResource( 5 )
 script = ExtResource( 2 )
@@ -44,10 +44,10 @@ inner_radius = 0.6
 pressed = false
 
 [node name="OBSRadialButton2" type="Control" parent="CanvasLayer/OBSRadialMenu"]
-margin_left = 353.6
-margin_top = 141.6
-margin_right = 670.4
-margin_bottom = 458.4
+margin_left = 359.3
+margin_top = 147.3
+margin_right = 664.7
+margin_bottom = 452.7
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null
@@ -58,10 +58,10 @@ inner_radius = 0.6
 pressed = false
 
 [node name="OBSRadialButton3" type="Control" parent="CanvasLayer/OBSRadialMenu"]
-margin_left = 353.6
-margin_top = 141.6
-margin_right = 670.4
-margin_bottom = 458.4
+margin_left = 359.3
+margin_top = 147.3
+margin_right = 664.7
+margin_bottom = 452.7
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null
@@ -72,10 +72,10 @@ inner_radius = 0.6
 pressed = false
 
 [node name="OBSRadialButton4" type="Control" parent="CanvasLayer/OBSRadialMenu"]
-margin_left = 353.6
-margin_top = 141.6
-margin_right = 670.4
-margin_bottom = 458.4
+margin_left = 359.3
+margin_top = 147.3
+margin_right = 664.7
+margin_bottom = 452.7
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null
@@ -85,49 +85,48 @@ arc_offset_degree = 0.0
 inner_radius = 0.6
 pressed = false
 
-[node name="OBSRadialMenu" type="Popup" parent="CanvasLayer/OBSRadialMenu"]
+[node name="SubMenu" type="Popup" parent="CanvasLayer/OBSRadialMenu"]
 visible = true
 anchor_right = 1.0
 anchor_bottom = 1.0
 focus_mode = 2
+mouse_filter = 1
 script = ExtResource( 1 )
 max_arc_degrees = 90.0
-outer_radius = 0.741333
-outer_radius_pixels = 222.4
-inner_radius = 0.71223
-inner_radius_pixels = 158.4
+clamp_type = 3
+radial_width = 0.0
+radial_gap = 0.0
 offset_angle = 0.0
 gap_degrees = 10.0
 force_neighboring = true
-clamp_type = 3
-sticky_thickness = 64.0
 
-[node name="OBSRadialButton" type="Control" parent="CanvasLayer/OBSRadialMenu/OBSRadialMenu"]
-margin_left = 289.6
-margin_top = 77.6
-margin_right = 734.4
-margin_bottom = 522.4
+[node name="OBSRadialButton" type="Control" parent="CanvasLayer/OBSRadialMenu/SubMenu"]
+margin_left = 359.3
+margin_top = 147.3
+margin_right = 792.7
+margin_bottom = 580.7
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null
 arc_start_degree = 5.0
 arc_end_degree = 40.0
 arc_offset_degree = 0.0
-inner_radius = 0.71223
+inner_radius = 0.704661
 pressed = false
 
-[node name="OBSRadialButton2" type="Control" parent="CanvasLayer/OBSRadialMenu/OBSRadialMenu"]
-margin_left = 289.6
-margin_top = 77.6
-margin_right = 734.4
-margin_bottom = 522.4
+[node name="OBSRadialButton2" type="Control" parent="CanvasLayer/OBSRadialMenu/SubMenu"]
+margin_left = 359.3
+margin_top = 147.3
+margin_right = 792.7
+margin_bottom = 580.7
 mouse_filter = 1
 script = ExtResource( 2 )
 icon = null
 arc_start_degree = 50.0
 arc_end_degree = 85.0
 arc_offset_degree = 0.0
-inner_radius = 0.71223
+inner_radius = 0.704661
 pressed = false
 
 [connection signal="centering_changed" from="CanvasLayer/OptionControls" to="." method="_on_OptionControls_centering_changed"]
+[connection signal="pressed" from="CanvasLayer/OBSRadialMenu/OpenSubmenu" to="CanvasLayer/OBSRadialMenu/SubMenu" method="popup_as_submenu"]

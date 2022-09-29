@@ -147,6 +147,12 @@ func _gui_input(event : InputEvent) -> void:
 	if _ProcessGUIInput(event):
 		accept_event()
 
+func _draw() -> void:
+	draw_rect(Rect2(Vector2.ZERO, rect_size), Color.red, false)
+
+func _process(delta):
+	update()
+
 func _get(property : String):
 	match property:
 		"icon":
