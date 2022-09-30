@@ -55,6 +55,7 @@ var _override_constants : Dictionary = {
 # ------------------------------------------------------------------------------
 # Variables
 # ------------------------------------------------------------------------------
+var _debug_draw : bool = false
 var _property_updated : bool = false
 var _in_focus : bool = false
 var _btn_state : int = BUTTON_STATE.Normal
@@ -126,6 +127,7 @@ func _ready() -> void:
 	_crect_node = crect
 	_crect_node.material = mat
 
+	set_process(_debug_draw)
 	var _res : int = connect("resized", self, "_on_resized")
 	if not Engine.editor_hint:
 		#set_focus_mode(Control.FOCUS_ALL)
@@ -148,7 +150,8 @@ func _gui_input(event : InputEvent) -> void:
 		accept_event()
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, rect_size), Color.red, false)
+	if _debug_draw:
+		draw_rect(Rect2(Vector2.ZERO, rect_size), Color.red, false)
 
 func _process(delta):
 	update()

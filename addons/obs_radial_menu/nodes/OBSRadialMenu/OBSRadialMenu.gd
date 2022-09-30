@@ -13,17 +13,20 @@ enum CLAMP {NoClamp=0, ExpandOnly=1, Sticky=2, FixedSticky=3}
 # ------------------------------------------------------------------------------
 # "Export" Variables
 # ------------------------------------------------------------------------------
+# Exists for all Radial Menus
 var _max_arc_degrees : float = 360.0
 var _outer_radius : float = 1.0
 var _inner_radius : float = 0.25
 var _offset_angle : float = 0.0
 var _gap_degrees : float = 5.0
 var _force_neighboring : bool = true
-#var _clamp_to_parent : bool = true
 
+# Exists for SUB Radial Menus
 var _clamp_type : int = CLAMP.NoClamp
 var _radial_width : float = 0.0
 var _radial_gap : float = 0.0
+var _relative_offset_x : float = 0.0
+var _relative_offset_y : float = 0.0
 
 # ------------------------------------------------------------------------------
 # Variables
@@ -94,6 +97,17 @@ func set_radial_gap(g : float) -> void:
 		if _is_subradial and _clamp_type != CLAMP.NoClamp:
 			_AdjustToParent()
 
+func set_relative_offset_x(ox : float) -> void:
+	ox = max(-1.0, min(1.0, ox))
+	_relative_offset_x = ox
+	if _is_subradial:
+		_AdjustRadialButtonSizeAndPos()
+
+func set_relative_offset_y(oy : float) -> void:
+	oy = max(-1.0, min(1.0, oy))
+	_relative_offset_y = oy
+	if _is_subradial:
+		_AdjustRadialButtonSizeAndPos()
 
 # ------------------------------------------------------------------------------
 # Override Methods
@@ -117,12 +131,13 @@ func _ready() -> void:
 	_relative_coords = Vector2(0.5, 0.5)
 	_RecalcScreenSize()
 	_AdjustRadialButtons()
+	_AdjustRadialButtonSizeAndPos()
 
 func _enter_tree() -> void:
-	_RecalcScreenSize()
 	var parent = get_parent()
 	if parent.get_class() == CLASS_NAME:
 		_is_subradial = true
+	_RecalcScreenSize()
 
 func _gui_input(event : InputEvent) -> void:
 	var processed : bool = false
@@ -172,6 +187,10 @@ func _get(property : String):
 			return _radial_width
 		"radial_gap":
 			return _radial_gap
+		"relative_offset_x":
+			return _relative_offset_x
+		"relative_offset_y":
+			return _relative_offset_y
 	return null
 
 func _set(property : String, value) -> bool:
@@ -228,6 +247,14 @@ func _set(property : String, value) -> bool:
 			if typeof(value) == TYPE_REAL:
 				set_radial_gap(value)
 			else : success = false
+		"relative_offset_x":
+			if typeof(value) == TYPE_REAL:
+				set_relative_offset_x(value)
+			else : success = false
+		"relative_offset_y":
+			if typeof(value) == TYPE_REAL:
+				set_relative_offset_y(value)
+			else : success = false
 		"theme":
 			call_deferred("_NotifyButtonsThemeChanged")
 			# The assignment of this value doesn't happen here, we just need to notify that it's
@@ -248,6 +275,11 @@ func _get_property_list() -> Array:
 			type = TYPE_NIL,
 			usage = PROPERTY_USAGE_CATEGORY
 		},
+#		{
+#			name = "backdrop_color",
+#			type = TYPE_COLOR,
+#			usage = 51 if true else 18
+#		},
 		{
 			name = "max_arc_degrees",
 			type = TYPE_REAL,
@@ -281,18 +313,11 @@ func _get_property_list() -> Array:
 			},
 		])
 	elif _is_subradial:
-		arr.append_array([
-			{
+		arr.append({
 				name = "radial_width",
 				type = TYPE_REAL,
 				usage = PROPERTY_USAGE_DEFAULT
-			},
-			{
-				name = "radial_gap",
-				type = TYPE_REAL,
-				usage = PROPERTY_USAGE_DEFAULT
-			}
-		])
+			})
 	
 	if not _is_subradial or (_clamp_type != CLAMP.FixedSticky and _clamp_type != CLAMP.Sticky):
 		arr.append_array([
@@ -309,6 +334,12 @@ func _get_property_list() -> Array:
 				usage = PROPERTY_USAGE_DEFAULT
 			},
 		])
+	elif _is_subradial:
+		arr.append({
+				name = "radial_gap",
+				type = TYPE_REAL,
+				usage = PROPERTY_USAGE_DEFAULT
+			})
 		
 	arr.append_array([
 		{
@@ -325,12 +356,33 @@ func _get_property_list() -> Array:
 			hint_string = "0.0, 10.0",
 			usage = PROPERTY_USAGE_DEFAULT
 		},
+	])
+	
+	if _is_subradial:
+		arr.append_array([
+			{
+				name = "relative_offset_x",
+				type = TYPE_REAL,
+				hint = PROPERTY_HINT_RANGE,
+				hint_string = "-1.0, 1.0",
+				usage = PROPERTY_USAGE_DEFAULT
+			},
+			{
+			name = "relative_offset_y",
+				type = TYPE_REAL,
+				hint = PROPERTY_HINT_RANGE,
+				hint_string = "-1.0, 1.0",
+				usage = PROPERTY_USAGE_DEFAULT
+			}
+		])
+	
+	arr.append(
 		{
 			name = "force_neighboring",
 			type = TYPE_BOOL,
 			usage = PROPERTY_USAGE_DEFAULT
 		}
-	])
+	)
 	
 #	if _is_subradial:
 #		arr.append({
@@ -413,7 +465,10 @@ func _ClampOuterRadii(value : float) -> float:
 			if radius < parent_outer_pixels:
 				value = max(0.0, min(1.0, parent_outer_pixels / base_size))
 			if _clamp_type == CLAMP.FixedSticky and radius != parent_outer_pixels + _radial_width + _radial_gap:
-				value = max(0.0, min(1.0, (parent_outer_pixels + _radial_width + _radial_gap) / base_size))
+				var radial_width : float = _radial_width
+				if _radial_width == 0.0:
+					radial_width = _CalcOuterRadiusPixels() - _CalcInnerRadiusPixels()
+				value = max(0.0, min(1.0, (parent_outer_pixels + radial_width + _radial_gap) / base_size))
 	return value
 
 func _ClampInnerRadii(value : float) -> float:
@@ -463,6 +518,10 @@ func _AdjustToParent() -> void:
 			outer_pixels = inner_pixels + thickness
 			process = true
 		elif _clamp_type == CLAMP.Sticky or _clamp_type == CLAMP.FixedSticky:
+			if _clamp_type == CLAMP.FixedSticky:
+				print("Fixed Sticky Mode!")
+			else:
+				print("Clamp mode: ", _clamp_type)
 			var thickness : float = outer_pixels - inner_pixels
 			inner_pixels = parent_outer_pixels
 			if _clamp_type == CLAMP.FixedSticky:
@@ -508,12 +567,15 @@ func _AdjustRadialButtons() -> void:
 
 func _AdjustRadialButtonSizeAndPos() -> void:
 	var cpos : Vector2 = rect_size * _relative_coords
+	var outer : float = _CalcOuterRadiusPixels()
+	var inner : float = _CalcInnerRadiusPixels()
 	for child in get_children():
 		if child is OBSRadialButton:
-			var outer : float = _CalcOuterRadiusPixels()
-			var inner : float = _CalcInnerRadiusPixels()
 			child.set_radii(inner, outer)
-			child.rect_position = cpos - Vector2(outer, outer)
+			var pos : Vector2 = cpos - Vector2(outer, outer)
+			if _is_subradial:
+				pos += Vector2(outer, outer) * 2.0 * Vector2(_relative_offset_x, _relative_offset_y)
+			child.rect_position = pos
 
 func _GetFocusedChild() -> OBSRadialButton:
 	for child in get_children():

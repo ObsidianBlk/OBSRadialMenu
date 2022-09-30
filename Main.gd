@@ -15,6 +15,7 @@ onready var obs_radial_menu_node : OBSRadialMenu = $CanvasLayer/OBSRadialMenu
 # ------------------------------------------------------------------------------
 # Override Methods
 # ------------------------------------------------------------------------------
+
 func _unhandled_input(event : InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == BUTTON_LEFT and event.pressed:
