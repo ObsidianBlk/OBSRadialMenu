@@ -15,6 +15,8 @@ enum CLAMP {NoClamp=0, ExpandOnly=1, Sticky=2, FixedSticky=3}
 # ------------------------------------------------------------------------------
 # Exists for all Radial Menus
 var _max_arc_degrees : float = 360.0
+var _backdrop_active : bool = false
+var _backdrop_color : Color = Color.black
 var _outer_radius : float = 1.0
 var _inner_radius : float = 0.25
 var _offset_angle : float = 0.0
@@ -37,6 +39,8 @@ var _is_subradial : bool = false
 
 var _relative_coords : Vector2 = Vector2.ZERO
 var _radius_override : Vector2 = Vector2.ZERO
+
+var _backdrop_node : ColorRect = null
 
 # ------------------------------------------------------------------------------
 # Setters
@@ -113,6 +117,12 @@ func set_relative_offset_y(oy : float) -> void:
 # Override Methods
 # ------------------------------------------------------------------------------
 func _ready() -> void:
+	_backdrop_node = ColorRect.new()
+	_backdrop_node.show_behind_parent = true
+	_backdrop_node.mouse_filter = Control.MOUSE_FILTER_PASS
+	_backdrop_node.visible = false
+	add_child(_backdrop_node)
+	
 	set_focus_mode(Control.FOCUS_ALL)
 	anchor_left = 0.0
 	anchor_top = 0.0
@@ -121,6 +131,8 @@ func _ready() -> void:
 	var _res : int = 0
 	if not Engine.editor_hint:
 		_res = get_viewport().connect("size_changed", self, "_on_viewport_size_changed")
+		_res = connect("focus_entered", self, "_on_focus_entered")
+		_res = connect("focus_exited", self, "_on_focus_exited")
 	else:
 		# This is to keep the popup filling the viewport as I want it to and prevents the editor
 		# from defying me... damnit! Shouldn't be needed at runtime.
@@ -132,6 +144,7 @@ func _ready() -> void:
 	_RecalcScreenSize()
 	_AdjustRadialButtons()
 	_AdjustRadialButtonSizeAndPos()
+	_UpdateBackdrop()
 
 func _enter_tree() -> void:
 	var parent = get_parent()
@@ -191,6 +204,10 @@ func _get(property : String):
 			return _relative_offset_x
 		"relative_offset_y":
 			return _relative_offset_y
+		"backdrop_color":
+			if _backdrop_active:
+				return _backdrop_color
+			return Color.black
 	return null
 
 func _set(property : String, value) -> bool:
@@ -255,6 +272,15 @@ func _set(property : String, value) -> bool:
 			if typeof(value) == TYPE_REAL:
 				set_relative_offset_y(value)
 			else : success = false
+		"backdrop_color":
+			if typeof(value) == TYPE_COLOR or value == null:
+				if value == null:
+					_backdrop_active = false
+				else:
+					_backdrop_active = true
+					_backdrop_color = value
+				_UpdateBackdrop()
+			else : success = false
 		"theme":
 			call_deferred("_NotifyButtonsThemeChanged")
 			# The assignment of this value doesn't happen here, we just need to notify that it's
@@ -275,11 +301,11 @@ func _get_property_list() -> Array:
 			type = TYPE_NIL,
 			usage = PROPERTY_USAGE_CATEGORY
 		},
-#		{
-#			name = "backdrop_color",
-#			type = TYPE_COLOR,
-#			usage = 51 if true else 18
-#		},
+		{
+			name = "backdrop_color",
+			type = TYPE_COLOR,
+			usage = 51 if _backdrop_active else 18
+		},
 		{
 			name = "max_arc_degrees",
 			type = TYPE_REAL,
@@ -486,6 +512,10 @@ func _ClampInnerRadii(value : float) -> float:
 
 func _RecalcScreenSize() -> void:
 	rect_size = get_viewport_rect().size
+	if _backdrop_node != null:
+		if _backdrop_node.visible == true:
+			_backdrop_node.rect_size = rect_size
+		
 	if _is_subradial and _clamp_type != CLAMP.NoClamp:
 		_AdjustToParent()
 	else:
@@ -518,10 +548,6 @@ func _AdjustToParent() -> void:
 			outer_pixels = inner_pixels + thickness
 			process = true
 		elif _clamp_type == CLAMP.Sticky or _clamp_type == CLAMP.FixedSticky:
-			if _clamp_type == CLAMP.FixedSticky:
-				print("Fixed Sticky Mode!")
-			else:
-				print("Clamp mode: ", _clamp_type)
 			var thickness : float = outer_pixels - inner_pixels
 			inner_pixels = parent_outer_pixels
 			if _clamp_type == CLAMP.FixedSticky:
@@ -593,6 +619,15 @@ func _GrabButtonFocus(btn : OBSRadialButton) -> void:
 				btn.grab_focus()
 				grab_focus()
 
+func _UpdateBackdrop() -> void:
+	if _backdrop_active:
+		if _backdrop_node != null:
+			_backdrop_node.rect_size = rect_size
+			_backdrop_node.modulate = _backdrop_color
+			_backdrop_node.visible = true
+	else:
+		_backdrop_node.visible = false
+
 # ------------------------------------------------------------------------------
 # Public Methods
 # ------------------------------------------------------------------------------
@@ -654,6 +689,10 @@ func hide() -> void:
 	for child in get_children():
 		if child.get_class() == CLASS_NAME:
 			child.hide()
+	var parent = get_parent()
+	if parent != null:
+		if parent.get_class() == CLASS_NAME:
+			parent.grab_focus()
 
 func has_focus() -> bool:
 	return _GetFocusedChild() != null
@@ -695,6 +734,21 @@ func _on_child_exited(child : Node) -> void:
 
 func _on_child_focus_entered() -> void:
 	grab_focus()
+
+func _on_focus_entered() -> void:
+	if not has_focus():
+		for child in get_children():
+			if child is OBSRadialButton:
+				child.grab_focus()
+				break
+
+func _on_focus_exited() -> void:
+	for child in get_children():
+		if child is OBSRadialButton:
+			# This is kinda cheating, but I'm a friend :D
+			if child._in_focus:
+				child._SetFocusMode(false)
+				break # because there can be only one!
 
 func _on_about_to_show() -> void:
 	_RecalcScreenSize()

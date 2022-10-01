@@ -518,10 +518,6 @@ func _ProcessGUIInput(event : InputEvent, processed : bool = false, notify_immed
 			BUTTON_STATE.Hover:
 				if event is InputEventMouseButton and _MousePositionOver(event.position):
 					if event.button_index == BUTTON_LEFT and event.pressed == true:
-#						var parent = get_parent()
-#						if parent:
-#							if parent.has_method("_GrabButtonFocus"):
-#								parent._GrabButtonFocus(self)
 						grab_focus()
 						set_pressed(true)
 						processed = true
